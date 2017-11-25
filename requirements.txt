@@ -1,0 +1,4 @@
+aiofiles
+aiohttp
+arsenic
+structlog
