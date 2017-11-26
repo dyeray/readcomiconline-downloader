@@ -1,4 +1,4 @@
-aiofiles
-aiohttp
-arsenic
-structlog
+aiofiles==0.3.*
+aiohttp==2.3.*
+arsenic>=1.0.0.dev6,<1.1
+structlog==17.2.*
