@@ -76,7 +76,7 @@ async def download_comic(url: str):
         title = await session.execute_script('return document.title')
     with tempfile.TemporaryDirectory() as tempdir:
         await download_files(image_links, tempdir)
-        await create_comic_book(title.split('-')[0].strip(), tempdir)
+        await create_comic_book(title.split(' - ')[0].strip(), tempdir)
 
 
 if __name__ == '__main__':
