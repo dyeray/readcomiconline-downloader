@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 import sys
 import tempfile
 import urllib.parse as urlparse
@@ -53,6 +54,9 @@ async def clean_url(url: str) -> str:
     new_parsed_url = parsed_url._replace(query=urlparse.urlencode(query_params, doseq=True))
     return new_parsed_url.geturl()
 
+async def clean_title(title: str) -> str:
+    return re.sub('[\\\/:*?"<>|]', '', title.split(' - ')[0].strip())
+
 
 async def create_comic_book(name: str, input_dir: str):
     """Create a CBZ file from the files of an input directory."""
@@ -73,10 +77,10 @@ async def download_comic(url: str):
         await session.get(url)
         await session.wait_for_element(15, '#containerRoot')
         image_links = await session.execute_script('return lstImages')
-        title = await session.execute_script('return document.title')
+        title = await clean_title(await session.execute_script('return document.title'))
     with tempfile.TemporaryDirectory() as tempdir:
         await download_files(image_links, tempdir)
-        await create_comic_book(title.split(' - ')[0].strip(), tempdir)
+        await create_comic_book(title, tempdir)
 
 
 if __name__ == '__main__':
