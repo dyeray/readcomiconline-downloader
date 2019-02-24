@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import os
 import re
 import sys
@@ -7,21 +6,15 @@ import tempfile
 import urllib.parse as urlparse
 from contextlib import closing
 from glob import glob
-from typing import List
+from typing import List, Tuple
 from zipfile import ZipFile
 
 import aiofiles
 import aiohttp
-import structlog
-from arsenic import browsers, services, get_session
+import cfscrape
 
 
 CHUNK_SIZE = 4 * 1024  # 4 KB
-
-
-# Disable arsenic logging.
-logging.basicConfig(level=logging.CRITICAL+10)
-structlog.configure(logger_factory=structlog.stdlib.LoggerFactory())
 
 
 async def download_file(session: aiohttp.ClientSession, name, url: str, directory: str):
@@ -43,7 +36,7 @@ async def download_files(links: List[str], directory: str):
                             for idx, link in enumerate(links)])
 
 
-async def clean_url(url: str) -> str:
+def clean_url(url: str) -> str:
     """Process a ReadComicOnline.to URL to make sure the page will be parsed correctly."""
     parsed_url = urlparse.urlparse(url)
     query_params = {
@@ -54,8 +47,9 @@ async def clean_url(url: str) -> str:
     new_parsed_url = parsed_url._replace(query=urlparse.urlencode(query_params, doseq=True))
     return new_parsed_url.geturl()
 
-async def clean_title(title: str) -> str:
-    return re.sub('[\\\/:*?"<>|]', '', title.split(' - ')[0].strip())
+
+def clean_title(title: str) -> str:
+    return ' '.join(re.sub('[\\\/:*?"<>|\r\n]', '', title.split(' - ')[0].strip()).split())
 
 
 async def create_comic_book(name: str, input_dir: str):
@@ -69,20 +63,29 @@ async def create_comic_book(name: str, input_dir: str):
     await loop.run_in_executor(None, _create_comic_book, input_dir)
 
 
-async def download_comic(url: str):
-    """Download a comic from a ReadComicOnline.to url."""
-    url = await clean_url(url)
-    async with get_session(services.PhantomJS(log_file=os.devnull),
-                           browsers.PhantomJS(loadImages=False)) as session:
-        await session.get(url)
-        await session.wait_for_element(15, '#containerRoot')
-        image_links = await session.execute_script('return lstImages')
-        title = await clean_title(await session.execute_script('return document.title'))
+def scrape_website(url) -> Tuple[str, List[str]]:
+    session = cfscrape.create_scraper(delay=10)
+    page = session.get(url)
+    content = page.content.decode('utf-8')
+    image_links = re.findall(r'lstImages.push\("(.*)"\);', content)
+    title = clean_title(re.findall('<title>(.*)</title>', content, re.MULTILINE | re.DOTALL)[0])
+    return title, image_links
+
+
+async def generate_comic_book(title, image_links):
+    """Creates a CBZ on working directory with the images from *image_links*"""
     with tempfile.TemporaryDirectory() as tempdir:
         await download_files(image_links, tempdir)
         await create_comic_book(title, tempdir)
 
 
-if __name__ == '__main__':
+def download_comic(url: str):
+    """Download a comic from a ReadComicOnline.to url."""
+    url = clean_url(url)
+    title, image_links = scrape_website(url)
     with closing(asyncio.get_event_loop()) as loop:
-        loop.run_until_complete(download_comic(sys.argv[1]))
+        loop.run_until_complete(generate_comic_book(title, image_links))
+
+
+if __name__ == '__main__':
+    download_comic(sys.argv[1])
