@@ -1,7 +1,6 @@
 import asyncio
 import os
 import re
-import sys
 import tempfile
 import urllib.parse as urlparse
 from contextlib import closing
@@ -52,15 +51,11 @@ def clean_title(title: str) -> str:
     return ' '.join(re.sub('[\\\/:*?"<>|\r\n]', '', title.split(' - ')[0].strip()).split())
 
 
-async def create_comic_book(name: str, input_dir: str):
+def create_comic_book(name: str, input_dir: str):
     """Create a CBZ file from the files of an input directory."""
-    def _create_comic_book(input_dir: str):
-        with ZipFile(f'{name}.cbz', 'w') as zip_file:
-            for filename in glob(os.path.join(input_dir, '*')):
-                zip_file.write(filename, os.path.basename(filename))
-
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, _create_comic_book, input_dir)
+    with ZipFile(f'{name}.cbz', 'w') as zip_file:
+        for filename in glob(os.path.join(input_dir, '*')):
+            zip_file.write(filename, os.path.basename(filename))
 
 
 def scrape_website(url) -> Tuple[str, List[str]]:
@@ -72,20 +67,16 @@ def scrape_website(url) -> Tuple[str, List[str]]:
     return title, image_links
 
 
-async def generate_comic_book(title, image_links):
+def generate_comic_book(title, image_links):
     """Creates a CBZ on working directory with the images from *image_links*"""
     with tempfile.TemporaryDirectory() as tempdir:
-        await download_files(image_links, tempdir)
-        await create_comic_book(title, tempdir)
+        with closing(asyncio.get_event_loop()) as loop:
+            loop.run_until_complete(download_files(image_links, tempdir))
+        create_comic_book(title, tempdir)
 
 
 def download_comic(url: str):
     """Download a comic from a ReadComicOnline.to url."""
     url = clean_url(url)
     title, image_links = scrape_website(url)
-    with closing(asyncio.get_event_loop()) as loop:
-        loop.run_until_complete(generate_comic_book(title, image_links))
-
-
-if __name__ == '__main__':
-    download_comic(sys.argv[1])
+    generate_comic_book(title, image_links)

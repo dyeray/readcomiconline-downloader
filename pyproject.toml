@@ -1,0 +1,18 @@
+[build-system]
+requires = ["flit"]
+build-backend = "flit.buildapi"
+
+[tool.flit.metadata]
+requires-python=">=3"
+requires = [
+    "aiofiles==0.4.*",
+    "aiohttp==3.5.*",
+    "cfscrape",
+]
+module = "rco_dl"
+author = "dyeray"
+author-email = "dyeray@gmail.com"
+home-page = "https://github.com/dyeray/readcomiconline-downloader/"
+
+[tool.flit.scripts]
+rco_dl = "rco_dl:main"
