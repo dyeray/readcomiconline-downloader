@@ -8,4 +8,4 @@ A readcomiconline.to downloader using asyncio.
 
 ## Usage
 
-`python rco-dl.py <url_to_comic>` will download the HQ images of the comic to the directory where the script is located.
+`rco_dl <url_to_comic>` will download the HQ images of the comic to a cbz file on the directory where the script is located.

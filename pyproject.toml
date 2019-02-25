@@ -13,6 +13,7 @@ module = "rco_dl"
 author = "dyeray"
 author-email = "dyeray@gmail.com"
 home-page = "https://github.com/dyeray/readcomiconline-downloader/"
+description-file="README.md"
 
 [tool.flit.scripts]
 rco_dl = "rco_dl:main"
